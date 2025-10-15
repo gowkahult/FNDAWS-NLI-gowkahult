@@ -1,1 +1,5 @@
-This is a fake news detection project.
+------------_REQUIREMENTS_------------
+use : pip install -r requirements.txt
+
+
+
