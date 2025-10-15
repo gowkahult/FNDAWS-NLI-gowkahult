@@ -41,7 +41,7 @@ def normalize_text(text):
     return norm_tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 
-retriever = SentenceTransformer('all-MiniLM-L6-v2')
+retriever = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
 
 def retrieve_top_k(claim, sources, top_k=3):
     """
@@ -101,3 +101,4 @@ def compute_verdict(probs, semantic_sim, sem_threshold=0.85, ent_threshold=0.6, 
         return "UNCERTAIN"
     else:
         return "UNCERTAIN"
+
