@@ -31,8 +31,12 @@ def split_sentences(text):
 
 
 flan_model_name = "google/flan-t5-small"
-norm_tokenizer = AutoTokenizer.from_pretrained(flan_model_name)
-norm_model = AutoModelForSeq2SeqLM.from_pretrained(flan_model_name)
+save_directory_norm = "./models/normalizer"
+norm_tokenizer = AutoTokenizer.from_pretrained(save_directory_norm)
+print("BRUHHHHHHH")
+norm_model = AutoModelForSeq2SeqLM.from_pretrained(save_directory_norm)
+
+
 
 def normalize_text(text):
     prompt = f"Normalize this text: {text}"
@@ -40,8 +44,9 @@ def normalize_text(text):
     outputs = norm_model.generate(**inputs, max_length=256)
     return norm_tokenizer.decode(outputs[0], skip_special_tokens=True)
 
+save_directory_sent= './models/sent_transformer'
+retriever = SentenceTransformer(save_directory_sent)
 
-retriever = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
 
 def retrieve_top_k(claim, sources, top_k=3):
     """
@@ -73,8 +78,12 @@ def retrieve_top_k(claim, sources, top_k=3):
 
 
 nli_model_name = "MoritzLaurer/deberta-v3-base-mnli-fever-anli"
-nli_tokenizer = AutoTokenizer.from_pretrained(nli_model_name)
-nli_model = AutoModelForSequenceClassification.from_pretrained(nli_model_name)
+save_directory_nli = "./models/nli_model"
+nli_tokenizer = AutoTokenizer.from_pretrained(save_directory_nli)
+print("BRUH")
+nli_model = AutoModelForSequenceClassification.from_pretrained(save_directory_nli)
+
+
 nli_model.eval()
 labels = nli_model.config.id2label  # entailment=2, neutral=1, contradiction=0
 
@@ -101,4 +110,3 @@ def compute_verdict(probs, semantic_sim, sem_threshold=0.85, ent_threshold=0.6, 
         return "UNCERTAIN"
     else:
         return "UNCERTAIN"
-

@@ -21,8 +21,10 @@ class StderrToLogger(object):
 
 sys.stderr = StderrToLogger()
 
+save_directory = "./models/summarizer"
+summarizer = pipeline("summarization", model=save_directory, device=-1)
 
-summarizer = pipeline("summarization", model="t5-small", device=-1)
+
 
 def chunked_summary(text, max_chunk_size=500):
     """
