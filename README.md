@@ -1,6 +1,6 @@
 ## DESCRIPTION
 This is the code for Masters' Union AI Hackathon 2025 submission (Scenario 1 / Fake News Detection Agent) by Gowtham Karthick, The Indian Public School, Salem, Tamil Nadu.
-
+Run main.py for demo model. 
  
 ## REQUIREMENTS
 use : pip install -r requirements.txt
