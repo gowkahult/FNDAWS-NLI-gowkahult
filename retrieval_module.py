@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from newspaper import Article
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer
+from tqdm import tqdm
 import faiss
 import logging
 import sys
@@ -47,7 +48,7 @@ retriever = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
 
 def chunked_summary(text, max_chunk_size=500):
     """
-    Splits long text into readable chunks and summarizes each.
+    Splits long text into readable chunks and summarizes each with progress tracking.
     Keeps punctuation and avoids short (<5 words) sentences.
     """
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
@@ -65,7 +66,8 @@ def chunked_summary(text, max_chunk_size=500):
         chunks.append(current_chunk.strip())
 
     summaries = []
-    for chunk in chunks:
+    print(f"🧠 Summarizing {len(chunks)} chunks...")
+    for chunk in tqdm(chunks, desc="Summarizing", unit="chunk"):
         try:
             input_len = len(chunk.split())
             max_len = min(130, max(10, input_len // 2))
@@ -137,7 +139,8 @@ def fetch_articles_from_web(headline, top_n=5):
     results = soup.find_all('a', {'class': 'title'})[:top_n]
     articles = []
 
-    for result in results:
+    print(f"🌍 Fetching and summarizing up to {top_n} articles from Bing...")
+    for result in tqdm(results, desc="Scraping Articles", unit="article"):
         title = result.text.strip()
         link = result['href']
 
