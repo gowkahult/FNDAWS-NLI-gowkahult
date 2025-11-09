@@ -7,8 +7,9 @@ import numpy as np
 import re
 import logging
 import sys
+from collections import OrderedDict
 
-logging.basicConfig(
+logging.basicConfig( 
     filename='warnings.log',
     level=logging.WARNING,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -47,34 +48,63 @@ def normalize_text(text):
 save_directory_sent= './models/sent_transformer'
 retriever = SentenceTransformer(save_directory_sent)
 
+def clean_sentence(s):
+    """Clean and normalize text."""
+    s = re.sub(r'\s+', ' ', s.strip())
+    s = re.sub(r'[“”"]', '', s)
+    s = s.replace("’", "'")
+    if not s.endswith(('.', '!', '?')):
+        s += '.'
+    return s[0].upper() + s[1:] if s else s
 
 def retrieve_top_k(claim, sources, top_k=3):
     """
-    Selects top-k sentences most relevant to the claim.
-    Cleans sentences for human readability and removes irrelevant info.
+    Retrieve top-k coherent, high-quality evidence sentences related to the claim.
+    Produces a human-readable summary from multi-source context.
     """
     all_sentences = []
-
     for src in sources:
         sentences = split_sentences(src)
         all_sentences.extend(sentences)
 
+    # Deduplicate sentences (preserve order)
+    all_sentences = list(OrderedDict.fromkeys(all_sentences))
+
+    if not all_sentences:
+        return "No relevant sentences found.", 0.0
+
+    # Encode claim and sentences
     claim_emb = retriever.encode(claim, convert_to_tensor=True)
     sent_embs = retriever.encode(all_sentences, convert_to_tensor=True)
 
-    # Compute similarity scores
+    # Compute similarity
     scores = util.cos_sim(claim_emb, sent_embs)[0].cpu().numpy()
-    top_idx = np.argsort(scores)[-top_k:][::-1]
-    top_evidences = [all_sentences[i] for i in top_idx]
 
-    # Make sentences readable: capitalize first letter
-    top_evidences = [s[0].upper() + s[1:] if s else s for s in top_evidences]
+    # Get top-k by similarity
+    top_idx = np.argsort(scores)[-top_k * 2:][::-1]  # fetch slightly more for filtering
 
-    combined_evidence = " ".join(top_evidences)
-    semantic_sim = float(np.mean(scores[top_idx]))
+    # Select diverse top sentences (avoid same article or rephrases)
+    selected = []
+    seen_phrases = set()
+    for i in top_idx:
+        sent = clean_sentence(all_sentences[i])
+        if any(p in sent.lower() for p in seen_phrases):
+            continue
+        seen_phrases.update(sent.lower().split()[:4])  # block duplicates
+        selected.append(sent)
+        if len(selected) >= top_k:
+            break
 
-    return combined_evidence, semantic_sim
+    # Merge into coherent paragraph
+    combined_evidence = " ".join(selected)
 
+    # Optional: fix flow with slight reordering by similarity descending
+    ordered = sorted(zip(selected, scores[top_idx][:len(selected)]), key=lambda x: -x[1])
+    combined_evidence = " ".join([s for s, _ in ordered])
+
+    semantic_sim = float(np.mean(scores[top_idx][:len(selected)]))
+
+    return combined_evidence.strip(), semantic_sim
 
 
 nli_model_name = "MoritzLaurer/deberta-v3-base-mnli-fever-anli"
@@ -95,7 +125,7 @@ def nli_probs(claim, evidence):
     return {labels[i]: float(probs[i]) for i in range(len(probs))}
 
 
-def compute_verdict(probs, semantic_sim, sem_threshold=0.85, ent_threshold=0.6, contr_threshold=0.6):
+def compute_verdict(probs, semantic_sim, sem_threshold=0.85, ent_threshold=0.6, contr_threshold=0.44):
     entail = probs['entailment']
     neutral = probs['neutral']
     contr = probs['contradiction']
